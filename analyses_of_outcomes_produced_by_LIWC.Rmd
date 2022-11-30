@@ -223,6 +223,31 @@ external_dic_output %>%
   knitr::kable()
 ```
 
+## Figure: Effects Larger than d = .20
+
+```{r}
+ext_dic_df_plot <- external_dic_output %>%
+                      filter(abs(as.numeric(d)) >= .2) %>% 
+                      filter(dictionary != "Stereotype Content") %>% 
+                      arrange(desc(abs(as.numeric(d)))) %>% 
+                      mutate(effect = as.numeric(d),
+                             lowerbound = as.numeric(d_ci_l),
+                             upperbound = as.numeric(d_ci_u),
+                             construct = paste0(gsub("_", " ", variable), " (", dictionary, ")"),
+                             color = if_else(as.numeric(d) > 0, "darkgreen", "darkred")) %>% 
+                      select(construct, effect, lowerbound, upperbound, color)
+
+
+
+ggplot(ext_dic_df_plot, aes(x = construct, y = effect)) +
+  geom_errorbar(aes(ymin = lowerbound, ymax = upperbound), width = 0.15, color = "darkgrey") +
+  geom_point(color = ext_dic_df_plot$color) +
+  geom_hline(yintercept = 0, color = "lightblue", linetype = "dashed") +
+  geom_text(label = ext_dic_df_plot$effect, vjust = -0.6, size = 3, color = ext_dic_df_plot$color) +
+  labs(x = "", y = "Cohen's d (Justified - Unjustified Anger)") +
+  coord_flip() +
+  theme_minimal(base_size = 10)
+```
 
 # Internal Dictionaries
 
@@ -388,6 +413,33 @@ internal_dic_output %>%
   knitr::kable()
 ```
 
+### Figure: Effects Larger than d = .20
+
+Since there are only two differences with d >= .20 among the "expanded" dictionaries, they are all included in this graph together with the "basic" dictionary results.
+```{r}
+int_basicexpanddic_df_plot <- internal_dic_output %>% 
+                      filter(dictionary != "Summary") %>% 
+                      filter(abs(as.numeric(d)) >= .2) %>% 
+                      arrange(desc(abs(as.numeric(d)))) %>% 
+                      mutate(effect = as.numeric(d),
+                             lowerbound = as.numeric(d_ci_l),
+                             upperbound = as.numeric(d_ci_u),
+                             construct = paste0(gsub("_", " ", variable), " (", dictionary, ")"),
+                             color = if_else(as.numeric(d) > 0, "darkgreen", "darkred")) %>% 
+                      select(construct, effect, lowerbound, upperbound, color)
+
+#manually correct the construct labels
+int_basicexpanddic_df_plot$construct <- c("Emotion Words (Overall)", "Negative Emotions (Overall)", "Cognitive Processing: Differentiation", "Negative Emotions: Anger", "Social Processes (Overall)", "Cognitive Processing (Overall)", "Cognitive Processing: Discrepancy", "Social Referents (Overall)", "Cognition (Overall)", "Drives (Overall)", "Social Behavior (Overall)", "Drives: Affiliation", "Cognition: All-or-none", "Social Behavior: Communication", "States: Want", "Affect (Overall)", "Physical: Sexual")
+
+ggplot(int_basicexpanddic_df_plot, aes(x = construct, y = effect)) +
+  geom_errorbar(aes(ymin = lowerbound, ymax = upperbound), width = 0.15, color = "darkgrey") +
+  geom_point(color = int_basicexpanddic_df_plot$color) +
+  geom_hline(yintercept = 0, color = "lightblue", linetype = "dashed") +
+  geom_text(label = int_basicexpanddic_df_plot$effect, vjust = -0.6, size = 3, color = int_basicexpanddic_df_plot$color) +
+  labs(x = "", y = "Cohen's d (Justified - Unjustified Anger)") +
+  coord_flip() +
+  theme_minimal(base_size = 10)
+```
 
 ## Expanded Dictionaries
 
@@ -423,3 +475,4 @@ internal_dic_output %>%
   select(dictionary, variable, Justified, Unjustified, APA) %>% 
   knitr::kable()
 ```
+
