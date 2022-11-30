@@ -1,0 +1,225 @@
+---
+title: "Analyses of the Closed-Vocabulary Variables Produced in LIWC"
+author: "Pooya Razavi"
+date: "last knitted: `r Sys.time()`"
+output: 
+  html_document:
+    theme: cosmo
+    highlight: textmate
+    toc: TRUE
+    toc_float: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+
+```{r setup, include=FALSE, warning=FALSE}
+#load libraries
+package_list <- c("dplyr", "tidyr", "ggplot2", "MetBrewer")
+lapply(package_list, require, character.only = TRUE)
+
+#save folder addresses
+external_dic_folder <- c("C:/Users/pooya/Dropbox (University of Oregon)/Anger Dissertation/LIWC/Analyzed w external dics/")
+
+internal_dic_folder <- c("C:/Users/pooya/Dropbox (University of Oregon)/Anger Dissertation/LIWC/Analyzed w internal dics/")
+
+#df <- readxl::read_xlsx("C:/Users/pooya/Dropbox (University of Oregon)/Anger Dissertation/Prototype study analysis/ProcessedData_F21_W22_S22_F22.xlsx")
+
+#Function to report correlation
+cor_report <- function(cor_output) {
+          r <- cor_output[["estimate"]] %>% round(2)
+          df <- cor_output[["parameter"]] %>% round(1)
+          ci_lb <- (cor_output[["conf.int"]])[1] %>% round(2)
+          ci_ub <- (cor_output[["conf.int"]])[2] %>% round(2)
+          original_p <- cor_output[["p.value"]] %>% round(3)
+          p <- if_else(original_p >= .001, paste0("= ", as.character(original_p)), "< .001")
+          
+          print(paste0("r(", df, ") = ", r, " [", ci_lb, ", ", ci_ub, "], p ", p))
+    }
+
+#Function to report independent-samples t-test
+  ind_ttest_report <- function(iv, dv) {
+      ttest <- t.test(dv ~ iv)
+      effect_size <- effectsize::cohens_d(dv ~ iv, pooled_sd = FALSE)
+      t <- ttest[["statistic"]] %>% round(2)
+      df <- ttest[["parameter"]] %>% round(1)
+      original_p <- ttest[["p.value"]] %>% round(3)
+      p <- if_else(original_p >= .001, paste0("= ", as.character(original_p)), "< .001")
+      d <- effect_size[1,1] %>% round(2)    
+      
+      print(paste0("t(", df, ") = ", t, ", p ", p, ", d = ", d))
+      
+  }
+  
+#Function to report paired-samples t-test
+    paired_ttest_report <- function(t1, t2) {
+      ttest <- t.test(Pair(t1, t2) ~ 1)
+      effect_size <- effectsize::cohens_d(Pair(t1, t2) ~ 1, pooled_sd = FALSE)
+      t <- ttest[["statistic"]] %>% round(2)
+      df <- ttest[["parameter"]] %>% round(1)
+      original_p <- ttest[["p.value"]] %>% round(3)
+      p <- if_else(original_p >= .001, paste0("= ", as.character(original_p)), "< .001")
+      d <- effect_size[1,1] %>% round(2)    
+      
+      print(paste0("t(", df, ") = ", t, ", p ", p, ", d = ", d))
+      
+  }
+
+#turn off scientific notation
+    options(scipen=999)
+        
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# External Dictionaries
+
+```{r}
+#list of .csv LIWC output files
+    external_dic_files <- list.files(external_dic_folder)
+
+#create an output df
+      external_dic_output <- data.frame(dictionary = NA,
+                                        variable = NA,
+                                        mean_justified = NA,
+                                        sd_justified = NA,
+                                        mean_unjustified = NA,
+                                        sd_unjustified = NA,
+                                        t = NA,
+                                        df = NA,
+                                        p = NA,
+                                        NHST = NA,
+                                        d = NA,
+                                        d_ci_l = NA,
+                                        d_ci_u = NA,
+                                        APA = NA)
+
+for (i in 1:length(external_dic_files)) {
+  #read in the specific file
+  #print(i)
+    df <- read.csv(paste0(external_dic_folder, external_dic_files[i]))
+  
+  #apply the preregistered data exclusion
+    #assigning values to factor levels
+      df$NarrativeWritten <- as.factor(df$NarrativeWritten)
+      df$NarrativeRelevant <- as.factor(df$NarrativeRelevant)
+      df$Condition <- as.factor(df$Condition)
+      
+      levels(df$NarrativeWritten) <- c("No", "Yes")
+      levels(df$NarrativeRelevant) <- c("No", "Yes", NA, NA) 
+      levels(df$Condition) <- c("justified", "nonjustified", NA)
+    
+    #drop cases following preregistration
+      df1 <- df %>% 
+        filter(NarrativeWritten != "No") %>% 
+        filter(NarrativeRelevant != "No") %>% 
+        filter(!is.na(Condition))
+      
+
+    #number of dictionary output columns (the first 7 columns are not from the dictionary analyses)
+      n_dic_columns <- ncol(df1) - 7
+    
+    for (col_number in 1:n_dic_columns) {
+      #print(col_number)
+          if (mean(df1[,7+col_number]) == 0) {
+            #print("Iteration skipped!")
+            next
+          }
+      #extract dictionary and variable (i.e., dictionary component) names
+      dictionary <- gsub('LIWC-22 Results - ','', external_dic_files[i]) %>% gsub('.csv', '', .)
+      variable <- colnames(df1[7+col_number])
+      
+      #run t-test
+      ttest <- t.test(df1[,7+col_number] ~ df1$Condition)
+      effect_size <- effectsize::cohens_d(df1[,7+col_number] ~ df1$Condition, pooled_sd = FALSE)
+      t <- ttest[["statistic"]] %>% round(2)
+      df <- ttest[["parameter"]] %>% round(1)
+      original_p <- ttest[["p.value"]] %>% round(3)
+      p <- if_else(original_p >= .001, paste0("= ", as.character(original_p)), "< .001")
+      NHST <- if_else(original_p >= .05, "null", 
+                      if_else(original_p >= .005, "sugg.", "sig."))
+      d <- effect_size[1,1] %>% round(2)  
+      d_ci_l <- effect_size[1,3] %>% round(2)  
+      d_ci_u <- effect_size[1,4] %>% round(2)  
+      
+      #descriptives
+      mean_justified <- (ttest[["estimate"]])[[1]] %>% round(2)
+      mean_unjustified <- (ttest[["estimate"]])[[2]] %>% round(2)
+      sd_justified <- (df1 %>% filter(Condition == "justified") %>% select((7+col_number)) %>% 
+                         psych::describe() %>% select(sd))[1,1] %>% round(2)
+      sd_unjustified <- (df1 %>% filter(Condition == "nonjustified") %>% select((7+col_number)) %>% 
+                           psych::describe() %>% select(sd))[1,1] %>% round(2)
+      APA <- paste0("t(", df, ") = ", t, ", p ", p, ", d = ", d)
+      
+      #add to output
+      external_dic_output <- rbind(external_dic_output,
+                                   cbind(dictionary, variable, mean_justified, sd_justified, mean_unjustified, sd_unjustified, t, df, p, NHST, d, d_ci_l, d_ci_u, APA))
+    }  
+      
+}
+      
+#Clean up the output table
+      rownames(external_dic_output) <- NULL
+      
+      external_dic_output <- external_dic_output[-1,] 
+        
+```
+
+## Table: All Comparisons
+
+```{r}
+external_dic_output %>% 
+  mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
+         Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")")) %>% 
+  select(dictionary, variable, Justified, Unjustified, APA) %>% 
+  knitr::kable()
+
+#save as an excel file (for the manuscript)
+  external_dic_output %>% 
+  mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
+         Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")"),
+         APA = paste0(APA, " [", d_ci_l, ", ", d_ci_u, "]")) %>% 
+  select(dictionary, variable, Justified, Unjustified, APA) %>% 
+  writexl::write_xlsx("external_dic_comparisons.xlsx")
+```
+
+## Table: Significant Differences
+
+```{r}
+
+external_dic_output %>%
+  filter(NHST == "sig.") %>% 
+  arrange(desc(abs(as.numeric(d)))) %>% 
+  mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
+         Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")")) %>% 
+  select(dictionary, variable, Justified, Unjustified, APA) %>% 
+  knitr::kable()
+```
+
+
+## Table: Suggestive Differences
+
+```{r}
+external_dic_output %>%
+  filter(NHST == "sugg.") %>% 
+  arrange(desc(abs(as.numeric(d)))) %>% 
+  select(dictionary, variable, mean_justified, mean_unjustified, APA) %>% 
+  mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
+         Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")")) %>% 
+  select(dictionary, variable, Justified, Unjustified, APA) %>% 
+  knitr::kable()
+```
+
+## Table: Null Results
+
+```{r}
+external_dic_output %>%
+  filter(NHST == "null") %>% 
+  arrange(desc(abs(as.numeric(d)))) %>% 
+  mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
+         Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")")) %>% 
+  select(dictionary, variable, Justified, Unjustified, APA) %>% 
+  knitr::kable()
+```
+
