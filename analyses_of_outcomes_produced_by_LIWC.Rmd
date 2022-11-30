@@ -176,12 +176,12 @@ external_dic_output %>%
   knitr::kable()
 
 #save as an excel file (for the manuscript)
-  external_dic_output %>% 
-  mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
-         Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")"),
-         APA = paste0(APA, " [", d_ci_l, ", ", d_ci_u, "]")) %>% 
-  select(dictionary, variable, Justified, Unjustified, APA) %>% 
-  writexl::write_xlsx("external_dic_comparisons.xlsx")
+  #external_dic_output %>% 
+  #mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
+  #       Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")"),
+  #       APA = paste0(APA, " [", d_ci_l, ", ", d_ci_u, "]")) %>% 
+  #select(dictionary, variable, Justified, Unjustified, APA) %>% 
+  #writexl::write_xlsx("external_dic_comparisons.xlsx")
 ```
 
 ## Table: Significant Differences
@@ -223,3 +223,203 @@ external_dic_output %>%
   knitr::kable()
 ```
 
+
+# Internal Dictionaries
+
+```{r}
+#list of .csv LIWC output files
+    internal_dic_files <- list.files(internal_dic_folder)
+
+#create an output df
+      internal_dic_output <- data.frame(dictionary = NA,
+                                        variable = NA,
+                                        mean_justified = NA,
+                                        sd_justified = NA,
+                                        mean_unjustified = NA,
+                                        sd_unjustified = NA,
+                                        t = NA,
+                                        df = NA,
+                                        p = NA,
+                                        NHST = NA,
+                                        d = NA,
+                                        d_ci_l = NA,
+                                        d_ci_u = NA,
+                                        APA = NA)
+
+for (i in 1:length(internal_dic_files)) {
+  #read in the specific file
+  #print(i)
+    df <- read.csv(paste0(internal_dic_folder, internal_dic_files[i]))
+  
+  #apply the preregistered data exclusion
+    #assigning values to factor levels
+      df$NarrativeWritten <- as.factor(df$NarrativeWritten)
+      df$NarrativeRelevant <- as.factor(df$NarrativeRelevant)
+      df$Condition <- as.factor(df$Condition)
+      
+      levels(df$NarrativeWritten) <- c("No", "Yes")
+      levels(df$NarrativeRelevant) <- c("No", "Yes", NA, NA) 
+      levels(df$Condition) <- c("justified", "nonjustified", NA)
+    
+    #drop cases following preregistration
+      df1 <- df %>% 
+        filter(NarrativeWritten != "No") %>% 
+        filter(NarrativeRelevant != "No") %>% 
+        filter(!is.na(Condition))
+      
+
+    #number of dictionary output columns (the first 7 columns are not from the dictionary analyses)
+      n_dic_columns <- ncol(df1) - 7
+    
+    for (col_number in 1:n_dic_columns) {
+      #print(col_number)
+          if (mean(df1[,7+col_number]) == 0) {
+            #print("Iteration skipped!")
+            next
+          }
+      #extract dictionary and variable (i.e., dictionary component) names
+      dictionary <- gsub('LIWC-22 Results - Internal - ','', internal_dic_files[i]) %>% gsub('.csv', '', .)
+      variable <- colnames(df1[7+col_number])
+      
+      #run t-test
+      ttest <- t.test(df1[,7+col_number] ~ df1$Condition)
+      effect_size <- effectsize::cohens_d(df1[,7+col_number] ~ df1$Condition, pooled_sd = FALSE)
+      t <- ttest[["statistic"]] %>% round(2)
+      df <- ttest[["parameter"]] %>% round(1)
+      original_p <- ttest[["p.value"]] %>% round(3)
+      p <- if_else(original_p >= .001, paste0("= ", as.character(original_p)), "< .001")
+      NHST <- if_else(original_p >= .05, "null", 
+                      if_else(original_p >= .005, "sugg.", "sig."))
+      d <- effect_size[1,1] %>% round(2)  
+      d_ci_l <- effect_size[1,3] %>% round(2)  
+      d_ci_u <- effect_size[1,4] %>% round(2)  
+      
+      #descriptives
+      mean_justified <- (ttest[["estimate"]])[[1]] %>% round(2)
+      mean_unjustified <- (ttest[["estimate"]])[[2]] %>% round(2)
+      sd_justified <- (df1 %>% filter(Condition == "justified") %>% select((7+col_number)) %>% 
+                         psych::describe() %>% select(sd))[1,1] %>% round(2)
+      sd_unjustified <- (df1 %>% filter(Condition == "nonjustified") %>% select((7+col_number)) %>% 
+                           psych::describe() %>% select(sd))[1,1] %>% round(2)
+      APA <- paste0("t(", df, ") = ", t, ", p ", p, ", d = ", d)
+      
+      #add to output
+      internal_dic_output <- rbind(internal_dic_output,
+                                   cbind(dictionary, variable, mean_justified, sd_justified, mean_unjustified, sd_unjustified, t, df, p, NHST, d, d_ci_l, d_ci_u, APA))
+    }  
+      
+}
+      
+#Clean up the output table
+      rownames(internal_dic_output) <- NULL
+      
+      internal_dic_output <- internal_dic_output[-1,] 
+        
+```
+
+## Summary Dictionaries
+
+### All Results
+
+```{r}
+internal_dic_output %>% 
+  filter(dictionary == "Summary") %>% 
+  mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
+         Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")")) %>% 
+  select(dictionary, variable, Justified, Unjustified, APA) %>% 
+  knitr::kable()
+
+#save as an excel file (for the manuscript)
+  #internal_dic_output %>%  
+  #filter(dictionary == "Summary") %>%
+  #mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
+  #       Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")"),
+  #       APA = paste0(APA, " [", d_ci_l, ", ", d_ci_u, "]")) %>% 
+  #select(dictionary, variable, Justified, Unjustified, APA) %>% 
+  #writexl::write_xlsx("internal_summary_dic_comparisons.xlsx")
+```
+
+
+### Ordered Based on Effect Size
+
+```{r}
+internal_dic_output %>% 
+  filter(dictionary == "Summary") %>% 
+  mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
+         Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")")) %>% 
+  arrange(desc(abs(as.numeric(d)))) %>% 
+  select(dictionary, variable, Justified, Unjustified, APA) %>% 
+  knitr::kable()
+```
+
+
+## Basic Dictionaries
+
+### All Results
+
+```{r}
+internal_dic_output %>% 
+  filter(dictionary == "Basic Dics") %>% 
+  mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
+         Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")")) %>% 
+  select(dictionary, variable, Justified, Unjustified, APA) %>% 
+  knitr::kable()
+
+#save as an excel file (for the manuscript)
+  #internal_dic_output %>%  
+  #filter(dictionary == "Basic Dics") %>%
+  #mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
+  #       Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")"),
+  #       APA = paste0(APA, " [", d_ci_l, ", ", d_ci_u, "]")) %>% 
+  #select(dictionary, variable, Justified, Unjustified, APA) %>% 
+  #writexl::write_xlsx("internal_basic_dic_comparisons.xlsx")
+```
+
+
+### Ordered Based on Effect Size
+
+```{r}
+internal_dic_output %>% 
+  filter(dictionary == "Basic Dics") %>% 
+  mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
+         Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")")) %>% 
+  arrange(desc(abs(as.numeric(d)))) %>% 
+  select(dictionary, variable, Justified, Unjustified, APA) %>% 
+  knitr::kable()
+```
+
+
+## Expanded Dictionaries
+
+### All Results
+
+```{r}
+internal_dic_output %>% 
+  filter(dictionary == "Expanded Dics") %>% 
+  mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
+         Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")")) %>% 
+  select(dictionary, variable, Justified, Unjustified, APA) %>% 
+  knitr::kable()
+
+#save as an excel file (for the manuscript)
+  #internal_dic_output %>%  
+  #filter(dictionary == "Expanded Dics") %>%
+  #mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
+  #       Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")"),
+  #       APA = paste0(APA, " [", d_ci_l, ", ", d_ci_u, "]")) %>% 
+  #select(dictionary, variable, Justified, Unjustified, APA) %>% 
+  #writexl::write_xlsx("internal_expanded_dic_comparisons.xlsx")
+```
+
+
+### Ordered Based on Effect Size
+
+```{r}
+internal_dic_output %>% 
+  filter(dictionary == "Expanded Dics") %>% 
+  mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
+         Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")")) %>% 
+  arrange(desc(abs(as.numeric(d)))) %>% 
+  select(dictionary, variable, Justified, Unjustified, APA) %>% 
+  knitr::kable()
+```
