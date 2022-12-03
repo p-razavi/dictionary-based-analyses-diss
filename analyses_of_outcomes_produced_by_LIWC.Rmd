@@ -179,9 +179,10 @@ external_dic_output %>%
   #external_dic_output %>% 
   #mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
   #       Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")"),
-  #       APA = paste0(APA, " [", d_ci_l, ", ", d_ci_u, "]")) %>% 
-  #select(dictionary, variable, Justified, Unjustified, APA) %>% 
-  #writexl::write_xlsx("external_dic_comparisons.xlsx")
+  #       ttest_APA = gsub(", d.*", "", APA), #this removed the d results from APA results
+  #       d_w_ci = paste0(d, " [", d_ci_l, ", ", d_ci_u, "]")) %>% 
+  #select(dictionary, variable, Justified, Unjustified, ttest_APA, d_w_ci) %>% 
+  #writexl::write_xlsx("external_dic_comparisons_02.xlsx")
 ```
 
 ## Table: Significant Differences
@@ -235,6 +236,7 @@ ext_dic_df_plot <- external_dic_output %>%
                              upperbound = as.numeric(d_ci_u),
                              construct = paste0(gsub("_", " ", variable), " (", dictionary, ")"),
                              color = if_else(as.numeric(d) > 0, "darkgreen", "darkred")) %>% 
+                      mutate(construct = forcats::fct_reorder(construct, as.numeric(d))) %>% 
                       select(construct, effect, lowerbound, upperbound, color)
 
 
@@ -359,9 +361,10 @@ internal_dic_output %>%
   #filter(dictionary == "Summary") %>%
   #mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
   #       Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")"),
-  #       APA = paste0(APA, " [", d_ci_l, ", ", d_ci_u, "]")) %>% 
-  #select(dictionary, variable, Justified, Unjustified, APA) %>% 
-  #writexl::write_xlsx("internal_summary_dic_comparisons.xlsx")
+  #       ttest_APA = gsub(", d.*", "", APA), #this removed the d results from APA results
+  #       d_w_ci = paste0(d, " [", d_ci_l, ", ", d_ci_u, "]")) %>% 
+  #select(dictionary, variable, Justified, Unjustified, ttest_APA, d_w_ci) %>% 
+  #writexl::write_xlsx("internal_summary_dic_comparisons_02.xlsx")
 ```
 
 
@@ -395,9 +398,10 @@ internal_dic_output %>%
   #filter(dictionary == "Basic Dics") %>%
   #mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
   #       Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")"),
-  #       APA = paste0(APA, " [", d_ci_l, ", ", d_ci_u, "]")) %>% 
-  #select(dictionary, variable, Justified, Unjustified, APA) %>% 
-  #writexl::write_xlsx("internal_basic_dic_comparisons.xlsx")
+  #       ttest_APA = gsub(", d.*", "", APA), #this removed the d results from APA results
+  #       d_w_ci = paste0(d, " [", d_ci_l, ", ", d_ci_u, "]")) %>% 
+  #select(dictionary, variable, Justified, Unjustified, ttest_APA, d_w_ci) %>% 
+  #writexl::write_xlsx("internal_basic_dic_comparisons_02.xlsx")
 ```
 
 
@@ -426,10 +430,15 @@ int_basicexpanddic_df_plot <- internal_dic_output %>%
                              upperbound = as.numeric(d_ci_u),
                              construct = paste0(gsub("_", " ", variable), " (", dictionary, ")"),
                              color = if_else(as.numeric(d) > 0, "darkgreen", "darkred")) %>% 
+                    #mutate(construct = forcats::fct_reorder(construct, as.numeric(d))) %>%
                       select(construct, effect, lowerbound, upperbound, color)
 
 #manually correct the construct labels
 int_basicexpanddic_df_plot$construct <- c("Emotion Words (Overall)", "Negative Emotions (Overall)", "Cognitive Processing: Differentiation", "Negative Emotions: Anger", "Social Processes (Overall)", "Cognitive Processing (Overall)", "Cognitive Processing: Discrepancy", "Social Referents (Overall)", "Cognition (Overall)", "Drives (Overall)", "Social Behavior (Overall)", "Drives: Affiliation", "Cognition: All-or-none", "Social Behavior: Communication", "States: Want", "Affect (Overall)", "Physical: Sexual")
+    
+  int_basicexpanddic_df_plot <- int_basicexpanddic_df_plot %>% 
+                                  mutate(construct = forcats::fct_reorder(construct, as.numeric(effect)))
+
 
 ggplot(int_basicexpanddic_df_plot, aes(x = construct, y = effect)) +
   geom_errorbar(aes(ymin = lowerbound, ymax = upperbound), width = 0.15, color = "darkgrey") +
@@ -458,9 +467,10 @@ internal_dic_output %>%
   #filter(dictionary == "Expanded Dics") %>%
   #mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
   #       Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")"),
-  #       APA = paste0(APA, " [", d_ci_l, ", ", d_ci_u, "]")) %>% 
-  #select(dictionary, variable, Justified, Unjustified, APA) %>% 
-  #writexl::write_xlsx("internal_expanded_dic_comparisons.xlsx")
+  #       ttest_APA = gsub(", d.*", "", APA), #this removed the d results from APA results
+  #       d_w_ci = paste0(d, " [", d_ci_l, ", ", d_ci_u, "]")) %>% 
+  #select(dictionary, variable, Justified, Unjustified, ttest_APA, d_w_ci) %>%  
+  #writexl::write_xlsx("internal_expanded_dic_comparisons_02.xlsx")
 ```
 
 
@@ -474,5 +484,34 @@ internal_dic_output %>%
   arrange(desc(abs(as.numeric(d)))) %>% 
   select(dictionary, variable, Justified, Unjustified, APA) %>% 
   knitr::kable()
+```
+
+
+### Figure: All Effects (|d| >= .20)
+
+```{r}
+int_basicexpanddic_df_plot <- int_basicexpanddic_df_plot %>% 
+        mutate(construct = paste0(gsub("\\(Overall\\)", "- Overall", int_basicexpanddic_df_plot$construct), " (LIWC)")) 
+
+ext_dic_df_plot <- ext_dic_df_plot %>% 
+        mutate(construct = gsub("Weighted Reflection Reorganization", "WRR", ext_dic_df_plot$construct))
+
+all_dic_df_plot <- rbind(ext_dic_df_plot, int_basicexpanddic_df_plot) %>% 
+                        mutate(construct = forcats::fct_reorder(construct, effect))
+
+
+all_dictionary_diff <- ggplot(all_dic_df_plot, aes(x = construct, y = effect)) +
+                          geom_errorbar(aes(ymin = lowerbound, ymax = upperbound), width = 0.25, size = 0.75, color = "darkgrey") +
+                          geom_point(color = all_dic_df_plot$color, size = 1.75) +
+                          geom_hline(yintercept = 0, color = "darkblue", linetype = "dashed") +
+                          geom_text(label = sprintf("%0.2f", round(all_dic_df_plot$effect, 2)), vjust = -0.6, size = 3.5, color = all_dic_df_plot$color) +
+                          labs(x = "Construct (Dictionary)", 
+                               y = expression("Cohen's" ~italic(d)~ "(Justified - Unjustified Anger)")) +
+                          coord_flip() +
+                          theme_minimal(base_size = 15) +
+                          theme(text=element_text(family = "serif"))
+
+all_dictionary_diff
+#ggsave(plot = all_dictionary_diff, width = 10, height = 10.5, dpi = 300, filename = "all_dictionary_differences_p.png")
 ```
 
