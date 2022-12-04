@@ -173,7 +173,7 @@ external_dic_output %>%
   mutate(Justified = paste0(mean_justified, " (", sd_justified, ")"),
          Unjustified = paste0(mean_unjustified, " (", sd_unjustified, ")")) %>% 
   select(dictionary, variable, Justified, Unjustified, APA) %>% 
-  knitr::kable()
+  knitr::kable() %>% kableExtra::kable_styling()
 
 #save as an excel file (for the manuscript)
   #external_dic_output %>% 
@@ -229,7 +229,7 @@ external_dic_output %>%
 ```{r}
 ext_dic_df_plot <- external_dic_output %>%
                       filter(abs(as.numeric(d)) >= .2) %>% 
-                      filter(dictionary != "Stereotype Content") %>% 
+                      #filter(dictionary != "Stereotype Content") %>% 
                       arrange(desc(abs(as.numeric(d)))) %>% 
                       mutate(effect = as.numeric(d),
                              lowerbound = as.numeric(d_ci_l),
@@ -513,5 +513,24 @@ all_dictionary_diff <- ggplot(all_dic_df_plot, aes(x = construct, y = effect)) +
 
 all_dictionary_diff
 #ggsave(plot = all_dictionary_diff, width = 10, height = 10.5, dpi = 300, filename = "all_dictionary_differences_p.png")
+```
+
+# Relation between base rates (M) and effect sizes (d)
+
+
+```{r}
+#combine the internal and external findings
+all_output <- rbind(internal_dic_output, external_dic_output) %>% 
+                    mutate(threshold = if_else(as.numeric(d) >= .2, "above", "below")) %>% 
+                    mutate(average_percentage = (as.numeric(mean_justified) + as.numeric(mean_unjustified))/2) %>% 
+                    filter(dictionary != "Summary" & dictionary != "Extended MFT") 
+
+psych::describeBy(all_output$average_percentage, group = all_output$threshold)
+
+#correlation between average percentage and effect size
+    cor.test(all_output$average_percentage, abs(as.numeric(all_output$d)), method = c( "pearson")) 
+    cor.test(all_output$average_percentage, abs(as.numeric(all_output$d)), method = c( "spearman")) 
+
+
 ```
 
