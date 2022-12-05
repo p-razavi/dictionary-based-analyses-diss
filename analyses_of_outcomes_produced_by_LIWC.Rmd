@@ -224,6 +224,37 @@ external_dic_output %>%
   knitr::kable()
 ```
 
+## Moral Foundation Results
+
+```{r}
+df_MFT2 <- read.csv(paste0(external_dic_folder, (list.files(external_dic_folder))[4]))
+
+df_MFT2 <- df_MFT2 %>% 
+                mutate(MFT_sum = rowSums(across(Care_Virtue:Sanctity_Vice)))
+
+  #apply the preregistered data exclusion
+    #assigning values to factor levels
+      df_MFT2$NarrativeWritten <- as.factor(df_MFT2$NarrativeWritten)
+      df_MFT2$NarrativeRelevant <- as.factor(df_MFT2$NarrativeRelevant)
+      df_MFT2$Condition <- as.factor(df_MFT2$Condition)
+      
+      levels(df_MFT2$NarrativeWritten) <- c("No", "Yes")
+      levels(df_MFT2$NarrativeRelevant) <- c("No", "Yes", NA, NA) 
+      levels(df_MFT2$Condition) <- c("justified", "nonjustified", NA)
+    
+    #drop cases following preregistration
+      df_MFT2 <- df_MFT2 %>% 
+        filter(NarrativeWritten != "No") %>% 
+        filter(NarrativeRelevant != "No") %>% 
+        filter(!is.na(Condition))
+
+psych::describeBy(df_MFT2$MFT_sum, group = df_MFT2$Condition)      
+ind_ttest_report(df_MFT2$Condition, df_MFT2$MFT_sum)
+effectsize::cohens_d(df_MFT2$MFT_sum, df_MFT2$Condition)
+
+```
+
+
 ## Figure: Effects Larger than d = .20
 
 ```{r}
@@ -490,13 +521,25 @@ internal_dic_output %>%
 ### Figure: All Effects (|d| >= .20)
 
 ```{r}
+internal_sum_algo <- internal_dic_output %>% 
+                        filter(variable %in% c("Analytic", "Clout")) %>% 
+                                        mutate(effect = as.numeric(d),
+                                               lowerbound = as.numeric(d_ci_l),
+                                               upperbound = as.numeric(d_ci_u),
+                                               construct = paste0(gsub("_", " ", variable), " (", dictionary, ")"),
+                                               color = if_else(as.numeric(d) > 0, "darkgreen", "darkred")) %>% 
+                                      #mutate(construct = forcats::fct_reorder(construct, as.numeric(d))) %>%
+                                        select(construct, effect, lowerbound, upperbound, color) 
+internal_sum_algo$construct <- c("Analytical Thinking (LIWC)", "Clout (LIWC)")
+
+
+
+
 int_basicexpanddic_df_plot <- int_basicexpanddic_df_plot %>% 
         mutate(construct = paste0(gsub("\\(Overall\\)", "- Overall", int_basicexpanddic_df_plot$construct), " (LIWC)")) 
 
-ext_dic_df_plot <- ext_dic_df_plot %>% 
-        mutate(construct = gsub("Weighted Reflection Reorganization", "WRR", ext_dic_df_plot$construct))
 
-all_dic_df_plot <- rbind(ext_dic_df_plot, int_basicexpanddic_df_plot) %>% 
+all_dic_df_plot <- rbind(ext_dic_df_plot, int_basicexpanddic_df_plot, internal_sum_algo) %>% 
                         mutate(construct = forcats::fct_reorder(construct, effect))
 
 
