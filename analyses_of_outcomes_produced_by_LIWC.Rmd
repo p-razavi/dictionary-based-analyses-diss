@@ -224,7 +224,7 @@ external_dic_output %>%
   knitr::kable()
 ```
 
-## Moral Foundation Results
+### Moral Foundation Results
 
 ```{r}
 df_MFT2 <- read.csv(paste0(external_dic_folder, (list.files(external_dic_folder))[4]))
@@ -251,6 +251,18 @@ df_MFT2 <- df_MFT2 %>%
 psych::describeBy(df_MFT2$MFT_sum, group = df_MFT2$Condition)      
 ind_ttest_report(df_MFT2$Condition, df_MFT2$MFT_sum)
 effectsize::cohens_d(df_MFT2$MFT_sum, df_MFT2$Condition)
+
+```
+
+### Moral Justification Outcome Summary
+
+```{r}
+all_output %>% 
+  filter(dictionary == "Moral Justification") %>% 
+  filter(variable != "Moral_Emotions_General") %>% 
+  mutate(avg_d = (as.numeric(mean_justified) + as.numeric(mean_unjustified))/2) %>% 
+  select(avg_d) %>% psych::describe()
+  
 
 ```
 
