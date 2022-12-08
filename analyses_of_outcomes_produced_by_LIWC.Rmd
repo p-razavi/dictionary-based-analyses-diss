@@ -549,7 +549,8 @@ all_dictionary_diff <- ggplot(all_dic_df_plot, aes(x = construct, y = effect)) +
                           geom_hline(yintercept = 0, color = "darkblue", linetype = "dashed") +
                           geom_text(label = sprintf("%0.2f", round(all_dic_df_plot$effect, 2)), vjust = -0.6, size = 3.5, color = all_dic_df_plot$color) +
                           labs(x = "Construct (Dictionary)", 
-                               y = expression("Cohen's" ~italic(d)~ "(Justified - Unjustified Anger)")) +
+                               y = expression("(Unjustified)                           Cohen's " ~italic(d)~ "                            (Justified)")) +
+                          ylim(-0.60, 0.60) +
                           coord_flip() +
                           theme_minimal(base_size = 15) +
                           theme(text=element_text(family = "serif"))
@@ -566,7 +567,7 @@ all_dictionary_diff
 all_output <- rbind(internal_dic_output, external_dic_output) %>% 
                     mutate(threshold = if_else(as.numeric(d) >= .2, "above", "below")) %>% 
                     mutate(average_percentage = (as.numeric(mean_justified) + as.numeric(mean_unjustified))/2) %>% 
-                    filter(dictionary != "Summary" & dictionary != "Extended MFT") 
+                    filter(dictionary != "Summary") 
 
 psych::describeBy(all_output$average_percentage, group = all_output$threshold)
 
